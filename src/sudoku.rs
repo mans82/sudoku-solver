@@ -1,3 +1,5 @@
+pub mod solver;
+
 #[derive(Clone, Copy)]
 pub enum SudokuCell {
     Empty,
@@ -137,6 +139,18 @@ impl SudokuTable {
         }
 
         true
+    }
+
+    fn table(&self) -> &Vec<Vec<SudokuCell>> {
+        &self.table
+    }
+
+    fn filled_cells(&self) -> u32 {
+        self.filled_cells
+    }
+
+    fn table_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
+        &mut self.table
     }
 }
 
