@@ -1,21 +1,21 @@
+use std::fmt::Display;
+
 pub mod solver;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SudokuCell {
     Empty,
     Filled(u8),
 }
 
+#[derive(Clone)]
 pub struct SudokuTable {
     table: Vec<Vec<SudokuCell>>,
-    filled_cells: u32,
 }
 
 impl SudokuTable {
     pub fn from_string(table_str: &str) -> Result<SudokuTable, String> {
         let mut table: Vec<Vec<SudokuCell>> = vec![vec![SudokuCell::Empty; 9]; 9];
-        let mut filled_cells: u32 = 0;
-
         let mut max_reached_row: usize = 0;
 
         for (row, line) in table_str.lines().enumerate() {
@@ -33,10 +33,7 @@ impl SudokuTable {
 
             for (col, char) in line.chars().enumerate() {
                 table[row][col] = match char {
-                    '1'..='9' => {
-                        filled_cells += 1;
-                        SudokuCell::Filled(char.to_digit(10).unwrap() as u8)
-                    }
+                    '1'..='9' => SudokuCell::Filled(char.to_digit(10).unwrap() as u8),
                     'X' => SudokuCell::Empty,
                     _ => return Err(format!("Illegal character: {}", char)),
                 }
@@ -48,10 +45,7 @@ impl SudokuTable {
         } else if !Self::is_valid_sudoku(&table) {
             Err(String::from("Input sudoku table is invalid"))
         } else {
-            Ok(SudokuTable {
-                table,
-                filled_cells,
-            })
+            Ok(SudokuTable { table })
         }
     }
 
@@ -141,16 +135,31 @@ impl SudokuTable {
         true
     }
 
-    fn table(&self) -> &Vec<Vec<SudokuCell>> {
+    pub fn table(&self) -> &Vec<Vec<SudokuCell>> {
         &self.table
     }
 
-    fn filled_cells(&self) -> u32 {
-        self.filled_cells
-    }
-
-    fn table_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
+    pub fn table_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
         &mut self.table
+    }
+}
+
+impl Display for SudokuTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for row in &self.table {
+            writeln!(
+                f,
+                "{}",
+                row.iter()
+                    .map(|x| match x {
+                        SudokuCell::Filled(x) => std::char::from_digit(*x as u32, 10).unwrap(),
+                        SudokuCell::Empty => 'X',
+                    })
+                    .collect::<String>()
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -170,16 +179,12 @@ mod tests {
         XXXXXXX74\n\
         XX52X63XX\n";
 
-        let SudokuTable {
-            table,
-            filled_cells,
-        } = SudokuTable::from_string(correct_table_string).unwrap();
+        let SudokuTable { table } = SudokuTable::from_string(correct_table_string).unwrap();
 
         assert_eq!(table.len(), 9);
         for row in &table {
             assert_eq!(row.len(), 9);
         }
-        assert_eq!(filled_cells, 81 - 49);
     }
 
     #[test]
