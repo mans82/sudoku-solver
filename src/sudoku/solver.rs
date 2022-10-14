@@ -1,37 +1,44 @@
-use super::{SudokuCell, SudokuTable};
+use super::{CellLocation, SudokuCell, SudokuTable};
 
-type TableCoordinates = (usize, usize);
-type RecursionState = (TableCoordinates, Vec<u8>);
-pub struct SudokuSolver<'a> {
-    table: &'a mut SudokuTable,
+struct RecursionState {
+    attempted_cell: CellLocation,
+    possible_values: Vec<u8>,
+}
+pub struct SudokuSolver {
+    table: SudokuTable,
     recursion_stack: Vec<RecursionState>,
 }
 
-impl<'a> SudokuSolver<'a> {
-    pub fn new(table: &'a mut SudokuTable) -> SudokuSolver<'a> {
+impl SudokuSolver {
+    pub fn new(table: &SudokuTable) -> SudokuSolver {
         let mut result = SudokuSolver {
-            table,
+            table: table.clone(),
             recursion_stack: Vec::with_capacity(81),
         };
 
-        if let Some((i, j)) = result.next_empty_cell((0, 0)) {
-            result
-                .recursion_stack
-                .push(((i, j), result.possible_values((i, j))));
+        if let Some(cell) = result.next_empty_cell_starting_from(CellLocation { row: 0, col: 0 }) {
+            let initial_state = RecursionState {
+                attempted_cell: cell,
+                possible_values: result.possible_values(cell),
+            };
+            result.recursion_stack.push(initial_state);
         }
 
         result
     }
 
-    fn next_empty_cell(&self, (x, y): TableCoordinates) -> Option<TableCoordinates> {
-        for i in x..self.table.table().len() {
+    fn next_empty_cell_starting_from(
+        &self,
+        CellLocation { row: x, col: y }: CellLocation,
+    ) -> Option<CellLocation> {
+        for i in x..self.table.contents().len() {
             let starting_col = match i > x {
                 true => 0,
                 false => y,
             };
-            for j in starting_col..self.table.table().len() {
-                if let SudokuCell::Empty = self.table.table()[i][j] {
-                    return Some((i, j));
+            for j in starting_col..self.table.contents().len() {
+                if let SudokuCell::Empty = self.table.contents()[i][j] {
+                    return Some(CellLocation { row: i, col: j });
                 }
             }
         }
@@ -39,33 +46,12 @@ impl<'a> SudokuSolver<'a> {
         None
     }
 
-    fn possible_values(&self, (i, j): TableCoordinates) -> Vec<u8> {
+    fn possible_values(&self, cell: CellLocation) -> Vec<u8> {
         let mut existing_digits = [false; 9];
 
-        for row_value in &self.table.table()[i] {
-            if let SudokuCell::Filled(x) = row_value {
-                let x = *x as usize - 1;
-                existing_digits[x] = true;
-            }
-        }
-
-        for row in self.table.table() {
-            let col_value = row[j];
-            if let SudokuCell::Filled(x) = col_value {
-                let x = x as usize - 1;
-                existing_digits[x] = true;
-            }
-        }
-
-        for indices_of_3_by_3_cell in
-            Self::all_indices_of_3_by_3_cell(Self::index_of_3_by_3_cell((i, j)))
-        {
-            let (i, j) = indices_of_3_by_3_cell;
-            if let SudokuCell::Filled(x) = self.table.table()[i][j] {
-                let x = x as usize - 1;
-                existing_digits[x] = true;
-            }
-        }
+        self.mark_existing_row_values_in_array(cell.row, &mut existing_digits);
+        self.mark_existing_col_values_in_array(cell.col, &mut existing_digits);
+        self.mark_existing_values_spanning_3_by_3_cell_in_array(cell, &mut existing_digits);
 
         existing_digits
             .iter()
@@ -75,49 +61,146 @@ impl<'a> SudokuSolver<'a> {
             .collect()
     }
 
-    fn index_of_3_by_3_cell((i, j): TableCoordinates) -> TableCoordinates {
-        (i / 3, j / 3)
+    fn mark_existing_row_values_in_array(&self, row_index: usize, mark_array: &mut [bool; 9]) {
+        for row_cell in &self.table.contents()[row_index] {
+            if let SudokuCell::Filled(value) = row_cell {
+                let value = *value as usize - 1;
+                mark_array[value] = true;
+            }
+        }
     }
 
-    fn all_indices_of_3_by_3_cell((i, j): TableCoordinates) -> [TableCoordinates; 9] {
-        let top_left_cell_index = (i * 3, j * 3);
+    fn mark_existing_col_values_in_array(&self, col_index: usize, mark_array: &mut [bool; 9]) {
+        for row in self.table.contents() {
+            let col_cell = row[col_index];
+            if let SudokuCell::Filled(value) = col_cell {
+                let value = value as usize - 1;
+                mark_array[value] = true;
+            }
+        }
+    }
+
+    fn mark_existing_values_spanning_3_by_3_cell_in_array(
+        &self,
+        cell: CellLocation,
+        mark_array: &mut [bool; 9],
+    ) {
+        for inside_cell in Self::cells_inside_3_by_3_cell(Self::index_of_3_by_3_cell(cell)) {
+            if let SudokuCell::Filled(value) =
+                self.table.contents()[inside_cell.row][inside_cell.col]
+            {
+                let value = value as usize - 1;
+                mark_array[value] = true;
+            }
+        }
+    }
+
+    fn index_of_3_by_3_cell(cell: CellLocation) -> CellLocation {
+        CellLocation {
+            row: cell.row / 3,
+            col: cell.col / 3,
+        }
+    }
+
+    fn cells_inside_3_by_3_cell(the_3_by_3_cell: CellLocation) -> [CellLocation; 9] {
+        let top_left_cell = CellLocation {
+            row: the_3_by_3_cell.row * 3,
+            col: the_3_by_3_cell.col * 3,
+        };
 
         [
-            (top_left_cell_index.0, top_left_cell_index.1),
-            (top_left_cell_index.0, top_left_cell_index.1 + 1),
-            (top_left_cell_index.0, top_left_cell_index.1 + 2),
-            (top_left_cell_index.0 + 1, top_left_cell_index.1),
-            (top_left_cell_index.0 + 1, top_left_cell_index.1 + 1),
-            (top_left_cell_index.0 + 1, top_left_cell_index.1 + 2),
-            (top_left_cell_index.0 + 2, top_left_cell_index.1),
-            (top_left_cell_index.0 + 2, top_left_cell_index.1 + 1),
-            (top_left_cell_index.0 + 2, top_left_cell_index.1 + 2),
+            CellLocation {
+                row: top_left_cell.row,
+                col: top_left_cell.col,
+            },
+            CellLocation {
+                row: top_left_cell.row,
+                col: top_left_cell.col + 1,
+            },
+            CellLocation {
+                row: top_left_cell.row,
+                col: top_left_cell.col + 2,
+            },
+            CellLocation {
+                row: top_left_cell.row + 1,
+                col: top_left_cell.col,
+            },
+            CellLocation {
+                row: top_left_cell.row + 1,
+                col: top_left_cell.col + 1,
+            },
+            CellLocation {
+                row: top_left_cell.row + 1,
+                col: top_left_cell.col + 2,
+            },
+            CellLocation {
+                row: top_left_cell.row + 2,
+                col: top_left_cell.col,
+            },
+            CellLocation {
+                row: top_left_cell.row + 2,
+                col: top_left_cell.col + 1,
+            },
+            CellLocation {
+                row: top_left_cell.row + 2,
+                col: top_left_cell.col + 2,
+            },
         ]
+    }
+
+    fn try_next_possible_value(
+        table: &mut SudokuTable,
+        last_state: &mut RecursionState,
+    ) -> Result<(), ()> {
+        if let Some(next_value) = last_state.possible_values.last() {
+            let CellLocation { row: x, col: y } = last_state.attempted_cell;
+            table.contents_mut()[x][y] = SudokuCell::Filled(*next_value);
+            last_state.possible_values.pop();
+
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    fn presolve_next_empty_cell(&self, last_state: &RecursionState) -> Result<RecursionState, ()> {
+        let CellLocation { row: x, col: y } = last_state.attempted_cell;
+        let empty_cell = self.next_empty_cell_starting_from(CellLocation { row: x, col: y + 1 });
+        if let None = empty_cell {
+            Err(())
+        } else {
+            let empty_cell = empty_cell.unwrap();
+
+            Ok(RecursionState {
+                attempted_cell: empty_cell,
+                possible_values: self.possible_values(empty_cell),
+            })
+        }
+    }
+
+    fn clear_last_try(recursion_stack: &mut Vec<RecursionState>, table: &mut SudokuTable) {
+        let RecursionState {
+            attempted_cell: CellLocation { row: x, col: y },
+            ..
+        } = recursion_stack.pop().unwrap();
+        table.contents_mut()[x][y] = SudokuCell::Empty;
     }
 }
 
-impl Iterator for SudokuSolver<'_> {
+impl Iterator for SudokuSolver {
     type Item = SudokuTable;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(recursion_state) = self.recursion_stack.last_mut() {
-            if let Some(new_value) = recursion_state.1.pop() {
-                let (i, j) = recursion_state.0;
-                self.table.table_mut()[i][j] = SudokuCell::Filled(new_value);
-
-                let next_empty_cell = self.next_empty_cell((i, j + 1));
-
-                if let Some(empty_cell_coordinates) = next_empty_cell {
-                    self.recursion_stack.push((
-                        empty_cell_coordinates,
-                        self.possible_values(empty_cell_coordinates),
-                    ));
+        while let Some(last_state) = self.recursion_stack.last_mut() {
+            if let Ok(_) = Self::try_next_possible_value(&mut self.table, last_state) {
+                let last_state = self.recursion_stack.last().unwrap();
+                if let Ok(presolved_state) = self.presolve_next_empty_cell(last_state) {
+                    self.recursion_stack.push(presolved_state);
                 } else {
                     return Some(self.table.clone());
                 }
             } else {
-                let ((i, j), ..) = self.recursion_stack.pop().unwrap();
-                self.table.table_mut()[i][j] = SudokuCell::Empty;
+                Self::clear_last_try(&mut self.recursion_stack, &mut self.table);
             }
         }
 
@@ -133,7 +216,7 @@ mod tests {
 
     #[test]
     fn single_solution() {
-        let input_table = "XX1XXXXX2\n\
+        let input_puzzle = "XX1XXXXX2\n\
         XXXX34XXX\n\
         X5XXX1XX6\n\
         X2X6XXXX3\n\
@@ -153,14 +236,14 @@ mod tests {
         564713928\n\
         813952467\n";
 
-        let mut table = SudokuTable::from_string(input_table).unwrap();
+        let mut table = SudokuTable::from_string(input_puzzle).unwrap();
         let mut solver = SudokuSolver::new(&mut table);
 
         let solution = solver.next().unwrap();
 
         assert_eq!(
-            solution.table,
-            SudokuTable::from_string(solution_string).unwrap().table
+            solution.contents,
+            SudokuTable::from_string(solution_string).unwrap().contents
         );
 
         assert!(solver.next().is_none());

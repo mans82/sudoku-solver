@@ -1,5 +1,11 @@
 use std::fmt::Display;
 
+#[derive(Clone, Copy)]
+pub struct CellLocation {
+    row: usize,
+    col: usize,
+}
+
 pub mod solver;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -10,56 +16,67 @@ pub enum SudokuCell {
 
 #[derive(Clone)]
 pub struct SudokuTable {
-    table: Vec<Vec<SudokuCell>>,
+    contents: Vec<Vec<SudokuCell>>,
 }
 
 impl SudokuTable {
+    const TABLE_SIZE: usize = 9;
+
     pub fn from_string(table_str: &str) -> Result<SudokuTable, String> {
-        let mut table: Vec<Vec<SudokuCell>> = vec![vec![SudokuCell::Empty; 9]; 9];
-        let mut max_reached_row: usize = 0;
+        let contents: Result<Vec<Vec<SudokuCell>>, _> = table_str
+            .lines()
+            .map(Self::extract_row_from_line)
+            .enumerate()
+            .map(|(i, x)| match i >= Self::TABLE_SIZE {
+                true => Err(String::from("Malformed string: too many lines")),
+                false => x,
+            })
+            .collect();
 
-        for (row, line) in table_str.lines().enumerate() {
-            max_reached_row = row;
+        let result = SudokuTable {
+            contents: contents?,
+        };
 
-            if row >= 9 {
-                return Err(String::from("Malformed string: too many lines"));
-            }
-
-            if line.len() != 9 {
-                return Err(String::from(
-                    "Malformed line: line should have exactly 9 characters",
-                ));
-            }
-
-            for (col, char) in line.chars().enumerate() {
-                table[row][col] = match char {
-                    '1'..='9' => SudokuCell::Filled(char.to_digit(10).unwrap() as u8),
-                    'X' => SudokuCell::Empty,
-                    _ => return Err(format!("Illegal character: {}", char)),
-                }
-            }
-        }
-
-        if max_reached_row < 8 {
+        if result.contents.len() < Self::TABLE_SIZE {
             Err(String::from("Malformed string: too few lines"))
-        } else if !Self::is_valid_sudoku(&table) {
+        } else if !result.is_valid_sudoku() {
             Err(String::from("Input sudoku table is invalid"))
         } else {
-            Ok(SudokuTable { table })
+            Ok(result)
         }
     }
 
-    fn is_valid_sudoku(table_cells: &Vec<Vec<SudokuCell>>) -> bool {
-        Self::are_rows_valid(table_cells)
-            && Self::are_cols_valid(table_cells)
-            && Self::are_3_by_3_cells_valid(table_cells)
+    fn extract_row_from_line(line: &str) -> Result<Vec<SudokuCell>, String> {
+        if line.len() != 9 {
+            return Err(String::from(
+                "Malformed line: line should have exactly 9 characters",
+            ));
+        }
+
+        let mut result = Vec::with_capacity(Self::TABLE_SIZE);
+
+        for char in line.chars() {
+            let extracted_cell = match char {
+                '1'..='9' => SudokuCell::Filled(char.to_digit(10).unwrap() as u8),
+                'X' => SudokuCell::Empty,
+                _ => return Err(format!("Illegal character: {}", char)),
+            };
+
+            result.push(extracted_cell);
+        }
+
+        Ok(result)
     }
 
-    fn are_rows_valid(table_cells: &Vec<Vec<SudokuCell>>) -> bool {
-        for i in 0usize..9 {
+    fn is_valid_sudoku(&self) -> bool {
+        self.are_rows_valid() && self.are_cols_valid() && self.are_3_by_3_cells_valid()
+    }
+
+    fn are_rows_valid(&self) -> bool {
+        for i in 0usize..Self::TABLE_SIZE {
             let mut row_digits = vec![];
-            for j in 0usize..9 {
-                if let SudokuCell::Filled(x) = table_cells[i][j] {
+            for j in 0usize..Self::TABLE_SIZE {
+                if let SudokuCell::Filled(x) = self.contents[i][j] {
                     row_digits.push(x);
                 }
             }
@@ -72,12 +89,12 @@ impl SudokuTable {
         true
     }
 
-    fn are_cols_valid(table_cells: &Vec<Vec<SudokuCell>>) -> bool {
-        for j in 0usize..9 {
+    fn are_cols_valid(&self) -> bool {
+        for j in 0usize..Self::TABLE_SIZE {
             let mut col_digits = vec![];
 
-            for i in 0usize..9 {
-                if let SudokuCell::Filled(x) = table_cells[i][j] {
+            for i in 0usize..Self::TABLE_SIZE {
+                if let SudokuCell::Filled(x) = self.contents[i][j] {
                     col_digits.push(x);
                 }
             }
@@ -90,10 +107,10 @@ impl SudokuTable {
         true
     }
 
-    fn are_3_by_3_cells_valid(table_cells: &Vec<Vec<SudokuCell>>) -> bool {
+    fn are_3_by_3_cells_valid(&self) -> bool {
         for i in 0usize..3 {
             for j in 0usize..3 {
-                if !Self::are_distinct_digits(&Self::get_3_by_3_cell(table_cells, i, j)) {
+                if !Self::are_distinct_digits(&self.get_3_by_3_cell(i, j)) {
                     return false;
                 }
             }
@@ -102,7 +119,7 @@ impl SudokuTable {
         true
     }
 
-    fn get_3_by_3_cell(table_cells: &Vec<Vec<SudokuCell>>, row: usize, col: usize) -> Vec<u8> {
+    fn get_3_by_3_cell(&self, row: usize, col: usize) -> Vec<u8> {
         let mut result = vec![];
 
         for i in 0usize..3 {
@@ -110,7 +127,7 @@ impl SudokuTable {
                 let table_i = (3 * row) + i;
                 let table_j = (3 * col) + j;
 
-                if let SudokuCell::Filled(x) = table_cells[table_i][table_j] {
+                if let SudokuCell::Filled(x) = self.contents[table_i][table_j] {
                     result.push(x);
                 }
             }
@@ -135,18 +152,18 @@ impl SudokuTable {
         true
     }
 
-    pub fn table(&self) -> &Vec<Vec<SudokuCell>> {
-        &self.table
+    pub fn contents(&self) -> &Vec<Vec<SudokuCell>> {
+        &self.contents
     }
 
-    pub fn table_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
-        &mut self.table
+    pub fn contents_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
+        &mut self.contents
     }
 }
 
 impl Display for SudokuTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in &self.table {
+        for row in &self.contents {
             writeln!(
                 f,
                 "{}",
@@ -179,7 +196,8 @@ mod tests {
         XXXXXXX74\n\
         XX52X63XX\n";
 
-        let SudokuTable { table } = SudokuTable::from_string(correct_table_string).unwrap();
+        let SudokuTable { contents: table } =
+            SudokuTable::from_string(correct_table_string).unwrap();
 
         assert_eq!(table.len(), 9);
         for row in &table {
