@@ -14,6 +14,18 @@ pub enum SudokuCell {
     Filled(u8),
 }
 
+impl Display for SudokuCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let result_char = match self {
+            Self::Empty => ' ',
+            Self::Filled(x) if *x <= 9 => std::char::from_digit(*x as u32, 10).unwrap(),
+            _ => '!',
+        };
+
+        write!(f, "{}", result_char)
+    }
+}
+
 #[derive(Clone)]
 pub struct SudokuTable {
     contents: Vec<Vec<SudokuCell>>,
@@ -159,21 +171,55 @@ impl SudokuTable {
     pub fn contents_mut(&mut self) -> &mut Vec<Vec<SudokuCell>> {
         &mut self.contents
     }
+
+    fn write_top_row(f: &mut std::fmt::Formatter<'_>, values: &[SudokuCell]) -> std::fmt::Result {
+        writeln!(f, "┌───┬───┬───┐ ┌───┬───┬───┐ ┌───┬───┬───┐")?;
+        Self::write_middle_row(f, values)
+    }
+
+    fn write_middle_row(
+        f: &mut std::fmt::Formatter<'_>,
+        values: &[SudokuCell],
+    ) -> std::fmt::Result {
+        Self::write_row_of_nums(f, values)?;
+        writeln!(f, "├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤")
+    }
+
+    fn write_row_of_nums(
+        f: &mut std::fmt::Formatter<'_>,
+        values: &[SudokuCell],
+    ) -> std::fmt::Result {
+        writeln!(
+            f,
+            "│ {} │ {} │ {} │ │ {} │ {} │ {} │ │ {} │ {} │ {} │",
+            values[0],
+            values[1],
+            values[2],
+            values[3],
+            values[4],
+            values[5],
+            values[6],
+            values[7],
+            values[8]
+        )
+    }
+
+    fn write_bottom_row(
+        f: &mut std::fmt::Formatter<'_>,
+        values: &[SudokuCell],
+    ) -> std::fmt::Result {
+        Self::write_row_of_nums(f, values)?;
+        writeln!(f, "└───┴───┴───┘ └───┴───┴───┘ └───┴───┴───┘")
+    }
 }
 
 impl Display for SudokuTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in &self.contents {
-            writeln!(
-                f,
-                "{}",
-                row.iter()
-                    .map(|x| match x {
-                        SudokuCell::Filled(x) => std::char::from_digit(*x as u32, 10).unwrap(),
-                        SudokuCell::Empty => 'X',
-                    })
-                    .collect::<String>()
-            )?;
+        for i in 0usize..3 {
+            let row_start = 3 * i;
+            Self::write_top_row(f, &self.contents[row_start])?;
+            Self::write_middle_row(f, &self.contents[row_start + 1])?;
+            Self::write_bottom_row(f, &self.contents[row_start + 2])?;
         }
 
         Ok(())
@@ -267,5 +313,44 @@ mod tests {
         5X52X63XX\n";
 
         SudokuTable::from_string(incorrect_table_string).unwrap();
+    }
+
+    #[test]
+    fn display() {
+        let input_table = "391867542\n\
+        286534719\n\
+        457291386\n\
+        129645873\n\
+        638179254\n\
+        745328691\n\
+        972486135\n\
+        564713928\n\
+        813952467\n";
+
+        let correct_display = "┌───┬───┬───┐ ┌───┬───┬───┐ ┌───┬───┬───┐\n\
+        │ 3 │ 9 │ 1 │ │ 8 │ 6 │ 7 │ │ 5 │ 4 │ 2 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 2 │ 8 │ 6 │ │ 5 │ 3 │ 4 │ │ 7 │ 1 │ 9 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 4 │ 5 │ 7 │ │ 2 │ 9 │ 1 │ │ 3 │ 8 │ 6 │\n\
+        └───┴───┴───┘ └───┴───┴───┘ └───┴───┴───┘\n\
+        ┌───┬───┬───┐ ┌───┬───┬───┐ ┌───┬───┬───┐\n\
+        │ 1 │ 2 │ 9 │ │ 6 │ 4 │ 5 │ │ 8 │ 7 │ 3 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 6 │ 3 │ 8 │ │ 1 │ 7 │ 9 │ │ 2 │ 5 │ 4 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 7 │ 4 │ 5 │ │ 3 │ 2 │ 8 │ │ 6 │ 9 │ 1 │\n\
+        └───┴───┴───┘ └───┴───┴───┘ └───┴───┴───┘\n\
+        ┌───┬───┬───┐ ┌───┬───┬───┐ ┌───┬───┬───┐\n\
+        │ 9 │ 7 │ 2 │ │ 4 │ 8 │ 6 │ │ 1 │ 3 │ 5 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 5 │ 6 │ 4 │ │ 7 │ 1 │ 3 │ │ 9 │ 2 │ 8 │\n\
+        ├───┼───┼───┤ ├───┼───┼───┤ ├───┼───┼───┤\n\
+        │ 8 │ 1 │ 3 │ │ 9 │ 5 │ 2 │ │ 4 │ 6 │ 7 │\n\
+        └───┴───┴───┘ └───┴───┴───┘ └───┴───┴───┘\n";
+
+        let sudoku_table = SudokuTable::from_string(input_table).unwrap();
+
+        assert_eq!(format!("{}", sudoku_table).trim(), correct_display.trim());
     }
 }
