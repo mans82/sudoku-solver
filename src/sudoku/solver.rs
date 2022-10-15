@@ -236,14 +236,16 @@ mod tests {
         564713928\n\
         813952467\n";
 
-        let mut table = SudokuTable::from_string(input_puzzle).unwrap();
+        let mut table = SudokuTable::from_string(input_puzzle.lines()).unwrap();
         let mut solver = SudokuSolver::new(&mut table);
 
         let solution = solver.next().unwrap();
 
         assert_eq!(
             solution.contents,
-            SudokuTable::from_string(solution_string).unwrap().contents
+            SudokuTable::from_string(solution_string.lines())
+                .unwrap()
+                .contents
         );
 
         assert!(solver.next().is_none());

@@ -34,9 +34,10 @@ pub struct SudokuTable {
 impl SudokuTable {
     const TABLE_SIZE: usize = 9;
 
-    pub fn from_string(table_str: &str) -> Result<SudokuTable, String> {
+    pub fn from_string<'a, T: Iterator<Item = &'a str>>(
+        table_str: T,
+    ) -> Result<SudokuTable, String> {
         let contents: Result<Vec<Vec<SudokuCell>>, _> = table_str
-            .lines()
             .map(Self::extract_row_from_line)
             .enumerate()
             .map(|(i, x)| match i >= Self::TABLE_SIZE {
@@ -243,7 +244,7 @@ mod tests {
         XX52X63XX\n";
 
         let SudokuTable { contents: table } =
-            SudokuTable::from_string(correct_table_string).unwrap();
+            SudokuTable::from_string(correct_table_string.lines()).unwrap();
 
         assert_eq!(table.len(), 9);
         for row in &table {
@@ -263,7 +264,7 @@ mod tests {
         13XXXX25X\n\
         XX52X63XX\n";
 
-        SudokuTable::from_string(incorrect_table_string).unwrap();
+        SudokuTable::from_string(incorrect_table_string.lines()).unwrap();
     }
 
     #[test]
@@ -280,7 +281,7 @@ mod tests {
         XX52X63XX\n
         7XXXXXXXX\n";
 
-        SudokuTable::from_string(incorrect_table_string).unwrap();
+        SudokuTable::from_string(incorrect_table_string.lines()).unwrap();
     }
 
     #[test]
@@ -296,7 +297,7 @@ mod tests {
         XXXXXXX7\n\
         XX52X63XX\n";
 
-        SudokuTable::from_string(incorrect_table_string).unwrap();
+        SudokuTable::from_string(incorrect_table_string.lines()).unwrap();
     }
 
     #[test]
@@ -312,7 +313,7 @@ mod tests {
         XXXXXXX74\n\
         5X52X63XX\n";
 
-        SudokuTable::from_string(incorrect_table_string).unwrap();
+        SudokuTable::from_string(incorrect_table_string.lines()).unwrap();
     }
 
     #[test]
@@ -349,7 +350,7 @@ mod tests {
         │ 8 │ 1 │ 3 │ │ 9 │ 5 │ 2 │ │ 4 │ 6 │ 7 │\n\
         └───┴───┴───┘ └───┴───┴───┘ └───┴───┴───┘\n";
 
-        let sudoku_table = SudokuTable::from_string(input_table).unwrap();
+        let sudoku_table = SudokuTable::from_string(input_table.lines()).unwrap();
 
         assert_eq!(format!("{}", sudoku_table).trim(), correct_display.trim());
     }
