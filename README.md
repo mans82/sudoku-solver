@@ -8,6 +8,10 @@ The solver logic implements the `Iterator` trait, which allows for iterating thr
 ## Example
 
 ```bash
+$ cargo run -- --version
+Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/sudoku-solver --version`
+sudoku-solver v0.1.0
 $ cat >> input.txt << EOF
 > XX1XXXXX5
 XXXX34XXX
