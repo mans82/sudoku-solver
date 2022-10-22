@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use super::solver::SudokuSolver;
-use super::SudokuTable;
+use super::sudoku::solver::SudokuSolver;
+use super::sudoku::SudokuTable;
 
 pub struct App {
     config: AppConfig,

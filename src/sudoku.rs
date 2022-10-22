@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-pub mod app;
 pub mod solver;
 
 #[derive(Clone, Copy)]
