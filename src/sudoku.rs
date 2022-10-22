@@ -40,7 +40,7 @@ impl SudokuTable {
             .map(Self::extract_row_from_line)
             .enumerate()
             .map(|(i, x)| match i >= Self::TABLE_SIZE {
-                true => Err(String::from("Malformed string: too many lines")),
+                true => Err(String::from("Invalid input: expected 9 lines, found more")),
                 false => x,
             })
             .collect();
@@ -50,9 +50,12 @@ impl SudokuTable {
         };
 
         if result.contents.len() < Self::TABLE_SIZE {
-            Err(String::from("Malformed string: too few lines"))
+            Err(String::from(format!(
+                "Invalid input: expected 9 lines, found {}",
+                result.contents.len()
+            )))
         } else if !result.is_valid_sudoku() {
-            Err(String::from("Input sudoku table is invalid"))
+            Err(String::from("Invalid input: illegal table"))
         } else {
             Ok(result)
         }
@@ -61,7 +64,7 @@ impl SudokuTable {
     fn extract_row_from_line(line: String) -> Result<Vec<SudokuCell>, String> {
         if line.len() != 9 {
             return Err(String::from(
-                "Malformed line: line should have exactly 9 characters",
+                "Invalid input: line should have exactly 9 characters",
             ));
         }
 
@@ -71,7 +74,7 @@ impl SudokuTable {
             let extracted_cell = match char {
                 '1'..='9' => SudokuCell::Filled(char.to_digit(10).unwrap() as u8),
                 'X' => SudokuCell::Empty,
-                _ => return Err(format!("Illegal character: {}", char)),
+                _ => return Err(format!("Invalid input: illegal character '{}'", char)),
             };
 
             result.push(extracted_cell);
@@ -252,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "too few lines")]
+    #[should_panic(expected = "found 8")]
     fn incorrect_table_string_too_few_lines() {
         let incorrect_table_string = "3X65X84XX\n\
         52XXXXXXX\n\
@@ -267,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "too many lines")]
+    #[should_panic(expected = "found more")]
     fn incorrect_table_string_too_many_lines() {
         let incorrect_table_string = "3X65X84XX\n\
         52XXXXXXX\n\
@@ -300,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "sudoku table is invalid")]
+    #[should_panic(expected = "illegal table")]
     fn incorrect_table_string_invalid_col() {
         let incorrect_table_string = "3X65X84XX\n\
         52XXXXXXX\n\

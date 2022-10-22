@@ -7,7 +7,7 @@ fn main() {
     let filename = env::args().skip(1).next();
 
     if filename.is_none() {
-        exit_with_error_message("Filename not specified");
+        exit_with_error_message("Input file name not specified in arguments");
     }
 
     let app_config = AppConfig::new(&filename.unwrap());
