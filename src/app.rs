@@ -4,6 +4,9 @@ use std::io::{BufRead, BufReader};
 use super::sudoku::solver::SudokuSolver;
 use super::sudoku::SudokuTable;
 
+const PACKAGE_NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct App {
     config: AppConfig,
 }
@@ -14,7 +17,16 @@ impl App {
     }
 
     pub fn run(&self) -> Result<(), String> {
-        let input_reader = Self::open_reader_to_file(&self.config.filename)?;
+        if self.config.print_version {
+            println!("{} v{}", PACKAGE_NAME, VERSION);
+            return Ok(());
+        }
+
+        if let None = self.config.file_name {
+            return Err(String::from("Input file name not specified"));
+        }
+
+        let input_reader = Self::open_reader_to_file(self.config.file_name.as_ref().unwrap())?;
         let input_file = Self::read_input(input_reader);
 
         let input_table = SudokuTable::from_string(input_file?.into_iter())?;
@@ -54,13 +66,15 @@ impl App {
 }
 
 pub struct AppConfig {
-    filename: String,
+    file_name: Option<String>,
+    print_version: bool,
 }
 
 impl AppConfig {
-    pub fn new(filename: &str) -> AppConfig {
+    pub fn new(file_name: Option<String>, print_version: bool) -> AppConfig {
         AppConfig {
-            filename: String::from(filename),
+            file_name,
+            print_version,
         }
     }
 }
