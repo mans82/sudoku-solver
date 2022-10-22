@@ -2,6 +2,10 @@
 name = "sudoku-solver"
 version = "0.1.0"
 edition = "2021"
+authors = ["Amir Hossein Mansoori <cando428@gmail.com>"]
+description = "A simple Sudoku solver"
+repository = "https://github.com/mans82/sudoku-solver"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
