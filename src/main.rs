@@ -1,7 +1,7 @@
 use std::env;
 use std::process::exit;
 
-use sudoku_solver::sudoku::app::{App, AppConfig};
+use sudoku_solver::{App, AppConfig};
 
 fn main() {
     let filename = env::args().skip(1).next();

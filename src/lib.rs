@@ -1,1 +1,3 @@
-pub mod sudoku;
+mod sudoku;
+
+pub use sudoku::app::{App, AppConfig};
