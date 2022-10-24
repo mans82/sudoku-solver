@@ -25,7 +25,7 @@ XXX71XXX9
 > EOF
 $ cargo run -- input.txt
     Finished dev [unoptimized + debuginfo] target(s) in 0.01s
-     Running `target/debug/sudoku-solver input2.txt`
+     Running `target/debug/sudoku-solver input.txt`
  => Solution 1:
 ┌───┬───┬───┐ ┌───┬───┬───┐ ┌───┬───┬───┐
 │ 2 │ 8 │ 1 │ │ 9 │ 6 │ 7 │ │ 3 │ 4 │ 5 │
